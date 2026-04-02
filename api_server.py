@@ -99,14 +99,14 @@ class AMLHandler(BaseHTTPRequestHandler):
 
         # ── Serve frontend ──────────────────────────────────────────────────
         if path == "" or path == "/" or path == "/index.html":
-            fe = os.path.join(os.path.dirname(__file__), "..", "frontend", "index.html")
+            fe = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "index.html")
             self._send_file(fe)
             return
 
         # ── API routes ───────────────────────────────────────────────────────
         if parts[0] != "api":
             # SPA fallback — serve index.html for any non-API route
-            fe = os.path.join(os.path.dirname(__file__), "..", "frontend", "index.html")
+            fe = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "index.html")
             self._send_file(fe)
             return
 
@@ -335,8 +335,8 @@ def run(port=None):
     engine = get_engine()  # Train upfront
     print(f"  ML engine ready. Models: iso, xgb, gnn, lstm")
     # Confirm frontend file exists at startup
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    frontend_path = os.path.abspath(os.path.join(base_dir, "..", "frontend", "index.html"))
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    frontend_path = os.path.join(base_dir, "frontend", "index.html")
     fe_exists = os.path.isfile(frontend_path)
     print(f"  Frontend path: {frontend_path}")
     print(f"  Frontend file exists: {fe_exists}")
