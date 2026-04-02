@@ -27,6 +27,26 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from datetime import datetime
 
+def _find_frontend() -> str:
+    """
+    Walk up from this file until we find a directory that contains
+    a 'frontend/index.html'. Works regardless of how Railway structures
+    the deployment directory.
+    """
+    current = os.path.abspath(__file__)
+    for _ in range(6):  # walk up at most 6 levels
+        current = os.path.dirname(current)
+        candidate = os.path.join(current, "frontend", "index.html")
+        if os.path.isfile(candidate):
+            return candidate
+    # Last resort: relative to this file's directory
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "frontend", "index.html")
+
+FRONTEND_INDEX = _find_frontend()
+print(f"[startup] Frontend resolved to: {FRONTEND_INDEX}", flush=True)
+print(f"[startup] Frontend exists: {os.path.isfile(FRONTEND_INDEX)}", flush=True)
+
 sys.path.insert(0, os.path.dirname(__file__))
 from ml_engine import get_engine, FEATURE_COLS
 from data_store import (
@@ -99,15 +119,13 @@ class AMLHandler(BaseHTTPRequestHandler):
 
         # ── Serve frontend ──────────────────────────────────────────────────
         if path == "" or path == "/" or path == "/index.html":
-            fe = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "index.html")
-            self._send_file(fe)
+            self._send_file(FRONTEND_INDEX)
             return
 
         # ── API routes ───────────────────────────────────────────────────────
         if parts[0] != "api":
             # SPA fallback — serve index.html for any non-API route
-            fe = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "index.html")
-            self._send_file(fe)
+            self._send_file(FRONTEND_INDEX)
             return
 
         route = "/".join(parts[1:])
@@ -335,15 +353,13 @@ def run(port=None):
     engine = get_engine()  # Train upfront
     print(f"  ML engine ready. Models: iso, xgb, gnn, lstm")
     # Confirm frontend file exists at startup
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    frontend_path = os.path.join(base_dir, "frontend", "index.html")
-    fe_exists = os.path.isfile(frontend_path)
-    print(f"  Frontend path: {frontend_path}")
+    fe_exists = os.path.isfile(FRONTEND_INDEX)
+    print(f"  Frontend path: {FRONTEND_INDEX}")
     print(f"  Frontend file exists: {fe_exists}")
     print(f"  API health: /api/health")
     print(f"{'='*55}\n")
     if not fe_exists:
-        print(f"[ERROR] index.html not found at {frontend_path}", flush=True)
+        print(f"[ERROR] index.html not found at {FRONTEND_INDEX}", flush=True)
     server = HTTPServer(("0.0.0.0", port), AMLHandler)
     try:
         server.serve_forever()
